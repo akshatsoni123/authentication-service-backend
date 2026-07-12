@@ -4,6 +4,7 @@ function notFoundHandler(req, res, _next) {
     error: {
       code: 'NOT_FOUND',
       message: `Route ${req.method} ${req.originalUrl} not found`,
+      ...(req.id ? { requestId: req.id } : {}),
     },
   });
 }

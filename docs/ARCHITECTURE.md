@@ -12,15 +12,39 @@ Modules under `src/modules/*` own their routes, controllers, and services. Share
 
 ## Express middleware order
 
-1. `helmet` — security headers  
-2. `cors` — allowed origins from config  
-3. `express.json` — body parser (size-limited)  
-4. Feature routes (`/health`, `/api/v1/...`)  
-5. `notFoundHandler`  
-6. `errorHandler` — centralized errors  
+1. `requestId` — correlation id (`X-Request-Id` / `req.id`)
+2. `helmet` — security headers
+3. `cors` — allowed origins from config + `credentials: true`
+4. `express.json` — body parser (size-limited, e.g. `10kb`)
+5. `pino-http` — structured request logs (passwords/tokens redacted)
+6. Feature routes (`/health`, `/api/v1/...`) with per-route `validate(schema)`
+7. `notFoundHandler`
+8. `errorHandler` — centralized errors; no stack traces leaked in production
 
-Later tickets add validation, auth, rate limiting, and request IDs **before** route handlers (after parsers).
+### Error envelope
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation failed",
+    "details": [{ "field": "body.email", "message": "Invalid email" }],
+    "requestId": "uuid"
+  }
+}
+```
+
+### Validation
+
+Use `validate({ body, query, params })` from `src/middleware/validate.js` on each route that accepts input. Invalid payloads become `400 VALIDATION_ERROR` with field-level `details`.
 
 ## Config boot
 
 `src/server.js` loads `.env` via `dotenv`, then `src/config` validates with **Zod** and fails fast if required variables are missing. Application code should import `{ config }` from `src/config` — never read `process.env` ad hoc in modules.
+
+## Logging
+
+- Logger: **Pino** (`src/utils/logger.js`)
+- Dev: pretty transport; Prod: JSON lines, `info` level
+- Never log raw passwords, tokens, or `Authorization` / cookie headers (redact paths configured)

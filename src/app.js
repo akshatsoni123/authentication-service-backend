@@ -1,19 +1,25 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const pinoHttp = require('pino-http');
+const { z } = require('zod');
 const { config } = require('./config');
 const { apiRouter } = require('./routes');
+const { requestId } = require('./middleware/requestId');
+const { validate } = require('./middleware/validate');
 const { notFoundHandler } = require('./middleware/notFound');
 const { errorHandler } = require('./middleware/errorHandler');
 const { pingDatabase } = require('./db');
 const { pingRedis } = require('./redis');
+const { logger } = require('./utils/logger');
 
 function createApp() {
   const app = express();
 
   app.disable('x-powered-by');
 
-  // Middleware order (see docs/ARCHITECTURE.md): security → parsers → routes → errors
+  // Order: requestId → helmet → cors → json → http logger → routes → 404 → errors
+  app.use(requestId);
   app.use(helmet());
   app.use(
     cors({
@@ -22,8 +28,23 @@ function createApp() {
     }),
   );
   app.use(express.json({ limit: '10kb' }));
+  app.use(
+    pinoHttp({
+      logger,
+      genReqId: (req) => req.id,
+      customProps: (req) => ({ requestId: req.id }),
+      serializers: {
+        req(req) {
+          return {
+            id: req.id,
+            method: req.method,
+            url: req.url,
+          };
+        },
+      },
+    }),
+  );
 
-  /** Liveness-style: process is up (always 200 if we can answer) */
   app.get('/health', async (_req, res) => {
     const redis = await pingRedis();
     res.status(200).json({
@@ -38,7 +59,6 @@ function createApp() {
     });
   });
 
-  /** Readiness: Postgres + Redis must respond */
   app.get('/health/ready', async (_req, res) => {
     const [database, redis] = await Promise.all([pingDatabase(), pingRedis()]);
     const ready = database.ok && redis.ok;
@@ -53,6 +73,23 @@ function createApp() {
       },
     });
   });
+
+  // Temporary demo route to prove validation (remove after #06 register lands)
+  app.post(
+    '/api/v1/_demo/validate',
+    validate({
+      body: z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+      }),
+    }),
+    (req, res) => {
+      res.status(200).json({
+        success: true,
+        data: { message: 'validation passed', body: req.body },
+      });
+    },
+  );
 
   app.use('/api/v1', apiRouter);
 
