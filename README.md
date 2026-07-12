@@ -14,6 +14,11 @@ npm run dev
 
 Health check: [http://localhost:3000/health](http://localhost:3000/health)
 
+Register (Issue #06): `POST http://localhost:3000/api/v1/auth/register`
+```json
+{ "email": "you@example.com", "password": "Str0ng1Pass" }
+```
+
 | Script | Purpose |
 |--------|---------|
 | `npm run dev` | Start with nodemon (reload on change) |

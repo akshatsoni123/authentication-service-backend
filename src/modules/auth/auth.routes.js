@@ -1,20 +1,10 @@
-/**
- * Auth module placeholders — implemented in later issues (#06–#11).
- * Layering: routes → controller → service → repository
- */
-
 const express = require('express');
+const { validate } = require('../../middleware/validate');
+const { registerBodySchema } = require('./auth.validation');
+const authController = require('./auth.controller');
 
 const router = express.Router();
 
-router.get('/', (_req, res) => {
-  res.status(501).json({
-    success: false,
-    error: {
-      code: 'NOT_IMPLEMENTED',
-      message: 'Auth routes will be implemented in upcoming issues',
-    },
-  });
-});
+router.post('/register', validate({ body: registerBodySchema }), authController.register);
 
 module.exports = { authRouter: router };

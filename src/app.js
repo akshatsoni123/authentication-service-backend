@@ -2,11 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const pinoHttp = require('pino-http');
-const { z } = require('zod');
 const { config } = require('./config');
 const { apiRouter } = require('./routes');
 const { requestId } = require('./middleware/requestId');
-const { validate } = require('./middleware/validate');
 const { notFoundHandler } = require('./middleware/notFound');
 const { errorHandler } = require('./middleware/errorHandler');
 const { pingDatabase } = require('./db');
@@ -73,23 +71,6 @@ function createApp() {
       },
     });
   });
-
-  // Temporary demo route to prove validation (remove after #06 register lands)
-  app.post(
-    '/api/v1/_demo/validate',
-    validate({
-      body: z.object({
-        email: z.string().email(),
-        password: z.string().min(8),
-      }),
-    }),
-    (req, res) => {
-      res.status(200).json({
-        success: true,
-        data: { message: 'validation passed', body: req.body },
-      });
-    },
-  );
 
   app.use('/api/v1', apiRouter);
 
