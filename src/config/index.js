@@ -11,6 +11,11 @@ const config = Object.freeze({
 
   database: {
     url: env.DATABASE_URL,
+    pool: {
+      max: env.DB_POOL_MAX,
+      idleTimeoutMillis: env.DB_POOL_IDLE_MS,
+      connectionTimeoutMillis: env.DB_POOL_CONN_TIMEOUT_MS,
+    },
   },
 
   redis: {

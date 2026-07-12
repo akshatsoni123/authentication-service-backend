@@ -7,6 +7,8 @@ Production-minded authentication API (Backend Roadmap **Project #3**): JWT + ref
 ```bash
 cp .env.example .env
 npm install
+# Start Postgres (see docs/DATABASE.md), then:
+npm run db:setup
 npm run dev
 ```
 
@@ -16,6 +18,9 @@ Health check: [http://localhost:3000/health](http://localhost:3000/health)
 |--------|---------|
 | `npm run dev` | Start with nodemon (reload on change) |
 | `npm start` | Start without reload |
+| `npm run migrate` | Apply Knex migrations |
+| `npm run seed` | Seed default roles / permissions |
+| `npm run db:setup` | migrate + seed |
 | `npm run lint` | ESLint |
 | `npm run format` | Prettier |
 | `npm test` | Tests (placeholder until Issue #15) |
@@ -25,7 +30,10 @@ Health check: [http://localhost:3000/health](http://localhost:3000/health)
 ```text
 src/
   config/          # Zod-validated env → frozen config
-  db/              # PostgreSQL (Issue #03)
+  db/
+    migrations/    # Knex SQL migrations
+    seeds/         # Default roles & permissions
+    index.js       # pg Pool + withTransaction
   redis/           # Redis (Issue #04)
   modules/
     auth/
@@ -47,6 +55,7 @@ docs/
 | [docs/HLD.md](./docs/HLD.md) | Architecture, tokens, sequences, threats |
 | [docs/API.md](./docs/API.md) | Endpoint contracts |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Layering & middleware order |
+| [docs/DATABASE.md](./docs/DATABASE.md) | Schema, ER diagram, pooling, ACID, migrations |
 
 ## Environment
 

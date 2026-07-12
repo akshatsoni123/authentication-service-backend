@@ -6,6 +6,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const { config } = require('./config');
 const { createApp } = require('./app');
+const { closePool } = require('./db');
 
 const app = createApp();
 
@@ -17,7 +18,12 @@ const server = app.listen(config.port, () => {
 
 function shutdown(signal) {
   console.log(`[server] received ${signal}, shutting down`);
-  server.close(() => {
+  server.close(async () => {
+    try {
+      await closePool();
+    } catch (err) {
+      console.error('[server] error closing db pool', err);
+    }
     process.exit(0);
   });
 }

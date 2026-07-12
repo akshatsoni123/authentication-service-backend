@@ -25,6 +25,10 @@ const envSchema = z.object({
   SMTP_FROM: z.string().min(1, 'SMTP_FROM is required'),
 
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
+
+  DB_POOL_MAX: z.coerce.number().int().positive().default(10),
+  DB_POOL_IDLE_MS: z.coerce.number().int().positive().default(30000),
+  DB_POOL_CONN_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
 });
 
 /**
