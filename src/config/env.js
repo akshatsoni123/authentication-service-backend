@@ -24,6 +24,8 @@ const envSchema = z.object({
   SMTP_PASS: z.string().optional().default(''),
   SMTP_FROM: z.string().min(1, 'SMTP_FROM is required'),
 
+  APP_URL: z.string().url().default('http://localhost:3000'),
+
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
 
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),

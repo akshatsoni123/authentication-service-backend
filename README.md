@@ -19,6 +19,15 @@ Register (Issue #06): `POST http://localhost:3000/api/v1/auth/register`
 { "email": "you@example.com", "password": "Str0ng1Pass" }
 ```
 
+Verify email (Issue #07): `POST http://localhost:3000/api/v1/auth/verify-email`
+```json
+{ "token": "<token-from-email-or-dev-logs>" }
+```
+
+Resend: `POST http://localhost:3000/api/v1/auth/resend-verification` `{ "email": "you@example.com" }`
+
+See [docs/AUTH.md](./docs/AUTH.md) for idempotent verify behavior and SMTP/Ethereal setup.
+
 | Script | Purpose |
 |--------|---------|
 | `npm run dev` | Start with nodemon (reload on change) |
@@ -62,6 +71,7 @@ docs/
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Layering & middleware order |
 | [docs/DATABASE.md](./docs/DATABASE.md) | Schema, ER diagram, pooling, ACID, migrations |
 | [docs/REDIS.md](./docs/REDIS.md) | Redis keys, TTL, sessions decision, helpers |
+| [docs/AUTH.md](./docs/AUTH.md) | Email verify decisions, SMTP / Ethereal |
 
 ## Environment
 

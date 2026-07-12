@@ -42,6 +42,8 @@ const config = Object.freeze({
     from: env.SMTP_FROM,
   },
 
+  appUrl: env.APP_URL,
+
   bcrypt: {
     saltRounds: env.BCRYPT_SALT_ROUNDS,
   },

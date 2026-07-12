@@ -9,4 +9,22 @@ async function register(req, res, next) {
   }
 }
 
-module.exports = { register };
+async function verifyEmail(req, res, next) {
+  try {
+    const data = await authService.verifyEmail(req.body);
+    res.status(200).json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function resendVerification(req, res, next) {
+  try {
+    const data = await authService.resendVerification(req.body);
+    res.status(200).json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { register, verifyEmail, resendVerification };

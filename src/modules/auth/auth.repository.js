@@ -12,8 +12,6 @@ async function findRoleIdByName(name, client = null) {
 
 /**
  * Atomically create user + default "user" role + email verification token.
- * Uses parameterized SQL to prevent injection.
- *
  * @param {{ email: string, passwordHash: string, tokenHash: string, expiresAt: Date }} input
  */
 async function createUserWithDefaults({ email, passwordHash, tokenHash, expiresAt }) {
@@ -46,4 +44,75 @@ async function createUserWithDefaults({ email, passwordHash, tokenHash, expiresA
   });
 }
 
-module.exports = { createUserWithDefaults, findRoleIdByName };
+/**
+ * @param {string} tokenHash
+ */
+async function findVerificationTokenByHash(tokenHash) {
+  const result = await query(
+    `SELECT t.id, t.user_id, t.expires_at, t.used_at, u.is_email_verified
+     FROM email_verification_tokens t
+     JOIN users u ON u.id = t.user_id
+     WHERE t.token_hash = $1
+     LIMIT 1`,
+    [tokenHash],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Mark user verified and consume the token in one transaction.
+ * @param {string} userId
+ * @param {string} tokenId
+ */
+async function markEmailVerified(userId, tokenId) {
+  return withTransaction(async (client) => {
+    await client.query(
+      `UPDATE users SET is_email_verified = true, updated_at = NOW() WHERE id = $1`,
+      [userId],
+    );
+    await client.query(
+      `UPDATE email_verification_tokens SET used_at = NOW() WHERE id = $1 AND used_at IS NULL`,
+      [tokenId],
+    );
+  });
+}
+
+/**
+ * @param {string} email
+ */
+async function findUserByEmail(email) {
+  const result = await query(
+    `SELECT id, email, is_email_verified FROM users WHERE email = $1 LIMIT 1`,
+    [email],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Invalidate previous unused tokens, then insert a new hashed token.
+ * @param {{ userId: string, tokenHash: string, expiresAt: Date }} input
+ */
+async function createVerificationToken({ userId, tokenHash, expiresAt }) {
+  return withTransaction(async (client) => {
+    await client.query(
+      `UPDATE email_verification_tokens
+       SET used_at = NOW()
+       WHERE user_id = $1 AND used_at IS NULL`,
+      [userId],
+    );
+    await client.query(
+      `INSERT INTO email_verification_tokens (user_id, token_hash, expires_at)
+       VALUES ($1, $2, $3)`,
+      [userId, tokenHash, expiresAt],
+    );
+  });
+}
+
+module.exports = {
+  createUserWithDefaults,
+  findRoleIdByName,
+  findVerificationTokenByHash,
+  markEmailVerified,
+  findUserByEmail,
+  createVerificationToken,
+};

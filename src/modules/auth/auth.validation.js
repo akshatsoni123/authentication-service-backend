@@ -15,4 +15,20 @@ const registerBodySchema = z.object({
     .regex(/[0-9]/, 'Password must contain a number'),
 });
 
-module.exports = { registerBodySchema };
+const verifyEmailBodySchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+});
+
+const resendVerificationBodySchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email('Invalid email format')
+    .transform((value) => value.toLowerCase()),
+});
+
+module.exports = {
+  registerBodySchema,
+  verifyEmailBodySchema,
+  resendVerificationBodySchema,
+};
