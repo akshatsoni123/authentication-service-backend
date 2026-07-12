@@ -5,6 +5,8 @@ const { config } = require('./config');
 const { apiRouter } = require('./routes');
 const { notFoundHandler } = require('./middleware/notFound');
 const { errorHandler } = require('./middleware/errorHandler');
+const { pingDatabase } = require('./db');
+const { pingRedis } = require('./redis');
 
 function createApp() {
   const app = express();
@@ -21,13 +23,32 @@ function createApp() {
   );
   app.use(express.json({ limit: '10kb' }));
 
-  app.get('/health', (_req, res) => {
+  /** Liveness-style: process is up (always 200 if we can answer) */
+  app.get('/health', async (_req, res) => {
+    const redis = await pingRedis();
     res.status(200).json({
       success: true,
       data: {
         status: 'ok',
         service: 'authentication-service',
         env: config.env,
+        redis: { ok: redis.ok, status: redis.status, reason: redis.reason },
+        timestamp: new Date().toISOString(),
+      },
+    });
+  });
+
+  /** Readiness: Postgres + Redis must respond */
+  app.get('/health/ready', async (_req, res) => {
+    const [database, redis] = await Promise.all([pingDatabase(), pingRedis()]);
+    const ready = database.ok && redis.ok;
+
+    res.status(ready ? 200 : 503).json({
+      success: ready,
+      data: {
+        status: ready ? 'ready' : 'not_ready',
+        database,
+        redis,
         timestamp: new Date().toISOString(),
       },
     });

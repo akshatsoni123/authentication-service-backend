@@ -7,7 +7,7 @@ Production-minded authentication API (Backend Roadmap **Project #3**): JWT + ref
 ```bash
 cp .env.example .env
 npm install
-# Start Postgres (see docs/DATABASE.md), then:
+# Start Postgres + Redis (see docs/DATABASE.md and docs/REDIS.md), then:
 npm run db:setup
 npm run dev
 ```
@@ -56,6 +56,7 @@ docs/
 | [docs/API.md](./docs/API.md) | Endpoint contracts |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Layering & middleware order |
 | [docs/DATABASE.md](./docs/DATABASE.md) | Schema, ER diagram, pooling, ACID, migrations |
+| [docs/REDIS.md](./docs/REDIS.md) | Redis keys, TTL, sessions decision, helpers |
 
 ## Environment
 
