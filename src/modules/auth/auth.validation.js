@@ -27,8 +27,19 @@ const resendVerificationBodySchema = z.object({
     .transform((value) => value.toLowerCase()),
 });
 
+// Login only needs email + password (same email normalize as register)
+const loginBodySchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email('Invalid email format')
+    .transform((value) => value.toLowerCase()),
+  password: z.string().min(1, 'Password is required'),
+});
+
 module.exports = {
   registerBodySchema,
   verifyEmailBodySchema,
   resendVerificationBodySchema,
+  loginBodySchema,
 };

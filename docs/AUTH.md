@@ -12,7 +12,24 @@
 - Registration still succeeds if SMTP fails (logged); use `POST /api/v1/auth/resend-verification`.
 - **Resend rate limiting** is deferred to Issue #12.
 
-## Login vs verified (for Issue #08)
+## Login vs verified (Issue #08)
 
 **Decision for now:** users may log in **before** email verification (easier Postman/learning).  
 Login can later return `403` when `is_email_verified = false` if product requires it.
+
+## Access token delivery: Bearer header vs cookies (Issue #08)
+
+| Mechanism | Where | Pros | Cons |
+|-----------|--------|------|------|
+| **Bearer header** | `Authorization: Bearer <accessJwt>` | Easy in Postman/mobile; explicit | If stored in `localStorage`, XSS can steal it |
+| **httpOnly cookie** | `access_token` / `refresh_token` | Not readable by JS → better vs XSS | Needs CORS `credentials`; CSRF care (`SameSite`) |
+
+**This project uses both:**
+- Login response JSON includes `accessToken` for Bearer use.
+- Login also sets cookies:
+  - `access_token` — httpOnly, `SameSite=Lax`, `Secure` in production, path `/`
+  - `refresh_token` — httpOnly, `SameSite=Lax`, `Secure` in production, path `/api/v1/auth` (stub until Issue #09 Redis rotation)
+
+`GET /api/v1/users/me` accepts Bearer **or** the access cookie via `authenticate` middleware.
+
+JWT access claims: `sub` (user id), `roles`, `jti`, plus `iat`/`exp` (lifetime from `JWT_ACCESS_EXPIRES_IN`, default 15m).

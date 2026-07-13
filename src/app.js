@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 const pinoHttp = require('pino-http');
 const { config } = require('./config');
 const { apiRouter } = require('./routes');
@@ -16,7 +17,7 @@ function createApp() {
 
   app.disable('x-powered-by');
 
-  // Order: requestId → helmet → cors → json → http logger → routes → 404 → errors
+  // Order: requestId → helmet → cors → json → cookies → http logger → routes → 404 → errors
   app.use(requestId);
   app.use(helmet());
   app.use(
@@ -26,6 +27,8 @@ function createApp() {
     }),
   );
   app.use(express.json({ limit: '10kb' }));
+  // Needed so authenticate() can read access_token / refresh_token cookies
+  app.use(cookieParser());
   app.use(
     pinoHttp({
       logger,

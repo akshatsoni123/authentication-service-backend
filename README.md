@@ -26,7 +26,13 @@ Verify email (Issue #07): `POST http://localhost:3000/api/v1/auth/verify-email`
 
 Resend: `POST http://localhost:3000/api/v1/auth/resend-verification` `{ "email": "you@example.com" }`
 
-See [docs/AUTH.md](./docs/AUTH.md) for idempotent verify behavior and SMTP/Ethereal setup.
+Login: `POST http://localhost:3000/api/v1/auth/login`
+```json
+{ "email": "you@example.com", "password": "Str0ng1Pass" }
+```
+Then `GET http://localhost:3000/api/v1/users/me` with header `Authorization: Bearer <accessToken>`.
+
+See [docs/AUTH.md](./docs/AUTH.md) for verify, login cookies, and SMTP/Ethereal setup.
 
 | Script | Purpose |
 |--------|---------|

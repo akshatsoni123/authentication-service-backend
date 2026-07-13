@@ -1,12 +1,14 @@
 const { AppError } = require('../../utils/AppError');
-const { hashPassword } = require('../../utils/password');
+const { hashPassword, verifyPassword } = require('../../utils/password');
 const { generateOpaqueToken, hashToken } = require('../../utils/tokens');
+const { signAccessToken } = require('../../utils/jwt');
 const {
   createUserWithDefaults,
   findVerificationTokenByHash,
   markEmailVerified,
   findUserByEmail,
   createVerificationToken,
+  findUserWithRolesByEmail,
 } = require('./auth.repository');
 const { sendVerificationEmail } = require('../../services/email.service');
 const { logger } = require('../../utils/logger');
@@ -129,4 +131,63 @@ async function resendVerification({ email }) {
   return generic;
 }
 
-module.exports = { register, verifyEmail, resendVerification };
+/**
+ * Login with email + password.
+ * Returns access JWT (+ refresh stub for cookie; Redis rotation in Issue #09).
+ *
+ * Security:
+ * - Always same 401 message (don't leak whether email exists)
+ * - Unverified email is ALLOWED for now (see docs/AUTH.md)
+ *
+ * @param {{ email: string, password: string }} input
+ * @param {{ ip?: string, userAgent?: string }} [meta] optional audit fields
+ */
+async function login({ email, password }, meta = {}) {
+  const user = await findUserWithRolesByEmail(email);
+
+  // Same message for "no user" and "wrong password"
+  const invalid = () => new AppError('Invalid email or password', 401, 'UNAUTHORIZED');
+
+  if (!user || user.status !== 'active') {
+    throw invalid();
+  }
+
+  const passwordOk = await verifyPassword(password, user.password_hash);
+  if (!passwordOk) {
+    throw invalid();
+  }
+
+  // Optional later: block unverified users with 403
+  // if (!user.is_email_verified) {
+  //   throw new AppError('Please verify your email before logging in', 403, 'FORBIDDEN');
+  // }
+
+  const { token, jti, expiresIn } = signAccessToken({
+    userId: user.id,
+    roles: user.roles,
+  });
+
+  // Issue #09 will store this in Redis and rotate it.
+  // Stub so we can set the httpOnly refresh cookie now.
+  const refreshStub = generateOpaqueToken();
+
+  logger.info(
+    { userId: user.id, jti, ip: meta.ip, userAgent: meta.userAgent },
+    'user logged in',
+  );
+
+  return {
+    accessToken: token,
+    tokenType: 'Bearer',
+    expiresIn,
+    refreshStub,
+    user: {
+      id: user.id,
+      email: user.email,
+      isEmailVerified: user.is_email_verified,
+      roles: user.roles,
+    },
+  };
+}
+
+module.exports = { register, verifyEmail, resendVerification, login };

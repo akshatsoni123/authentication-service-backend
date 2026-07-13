@@ -1,15 +1,10 @@
 const express = require('express');
+const { authenticate } = require('../../middleware/authenticate');
+const usersController = require('./users.controller');
 
 const router = express.Router();
 
-router.get('/me', (_req, res) => {
-  res.status(501).json({
-    success: false,
-    error: {
-      code: 'NOT_IMPLEMENTED',
-      message: 'Users routes will be implemented in upcoming issues',
-    },
-  });
-});
+// authenticate runs first → sets req.user, then me() reads req.user.id
+router.get('/me', authenticate, usersController.me);
 
 module.exports = { usersRouter: router };

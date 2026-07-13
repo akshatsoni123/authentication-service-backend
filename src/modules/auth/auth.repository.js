@@ -108,6 +108,61 @@ async function createVerificationToken({ userId, tokenHash, expiresAt }) {
   });
 }
 
+/**
+ * Load user + role names for login (includes password_hash for bcrypt.compare).
+ * @param {string} email
+ */
+async function findUserWithRolesByEmail(email) {
+  const userResult = await query(
+    `SELECT id, email, password_hash, is_email_verified, status
+     FROM users WHERE email = $1 LIMIT 1`,
+    [email],
+  );
+  const user = userResult.rows[0];
+  if (!user) return null;
+
+  const rolesResult = await query(
+    `SELECT r.name
+     FROM user_roles ur
+     JOIN roles r ON r.id = ur.role_id
+     WHERE ur.user_id = $1`,
+    [user.id],
+  );
+
+  return { ...user, roles: rolesResult.rows.map((row) => row.name) };
+}
+
+/**
+ * Safe profile for GET /users/me (no password_hash).
+ * @param {string} userId
+ */
+async function findUserProfileById(userId) {
+  const userResult = await query(
+    `SELECT id, email, is_email_verified, status, created_at
+     FROM users WHERE id = $1 LIMIT 1`,
+    [userId],
+  );
+  const user = userResult.rows[0];
+  if (!user) return null;
+
+  const rolesResult = await query(
+    `SELECT r.name
+     FROM user_roles ur
+     JOIN roles r ON r.id = ur.role_id
+     WHERE ur.user_id = $1`,
+    [userId],
+  );
+
+  return {
+    id: user.id,
+    email: user.email,
+    isEmailVerified: user.is_email_verified,
+    status: user.status,
+    roles: rolesResult.rows.map((row) => row.name),
+    createdAt: user.created_at,
+  };
+}
+
 module.exports = {
   createUserWithDefaults,
   findRoleIdByName,
@@ -115,4 +170,6 @@ module.exports = {
   markEmailVerified,
   findUserByEmail,
   createVerificationToken,
+  findUserWithRolesByEmail,
+  findUserProfileById,
 };
