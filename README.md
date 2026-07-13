@@ -32,7 +32,11 @@ Login: `POST http://localhost:3000/api/v1/auth/login`
 ```
 Then `GET http://localhost:3000/api/v1/users/me` with header `Authorization: Bearer <accessToken>`.
 
-See [docs/AUTH.md](./docs/AUTH.md) for verify, login cookies, and SMTP/Ethereal setup.
+Refresh (cookie jar / `-c`/`-b` curl): `POST http://localhost:3000/api/v1/auth/refresh`  
+Logout: `POST http://localhost:3000/api/v1/auth/logout` (Bearer required)  
+Logout all: `POST http://localhost:3000/api/v1/auth/logout-all`
+
+See [docs/AUTH.md](./docs/AUTH.md) for verify, cookies, refresh rotation, and reuse detection.
 
 | Script | Purpose |
 |--------|---------|

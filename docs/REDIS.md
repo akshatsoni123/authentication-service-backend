@@ -40,6 +40,7 @@ Key builders: `src/redis/keys.js` → `keys.*`
 |---------|--------|---------|-------------|
 | `auth:refresh:{userId}:{tokenId}` | `keys.refresh` | Active refresh session metadata | ≤ refresh lifetime (7d) |
 | `auth:refresh-hash:{tokenHash}` | `keys.refreshByHash` | Lookup session from cookie hash | same as refresh |
+| `auth:refresh-used:{tokenHash}` | `keys.refreshUsed` | Tombstone after rotation (reuse detection) | ≤ refresh lifetime (7d) |
 | `auth:deny:{jti}` | `keys.denyJti` | Access token denylist after logout | remaining access life (~15m) |
 | `auth:session:{sessionId}` | `keys.session` | Optional generic session blob | as needed |
 | `rl:login:{ip}:{email}` | `keys.rateLimitLogin` | Login brute-force window | e.g. 15m |

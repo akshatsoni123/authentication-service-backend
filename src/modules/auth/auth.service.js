@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { AppError } = require('../../utils/AppError');
 const { hashPassword, verifyPassword } = require('../../utils/password');
 const { generateOpaqueToken, hashToken } = require('../../utils/tokens');
@@ -9,8 +10,18 @@ const {
   findUserByEmail,
   createVerificationToken,
   findUserWithRolesByEmail,
+  findUserProfileById,
 } = require('./auth.repository');
 const { sendVerificationEmail } = require('../../services/email.service');
+const {
+  createRefreshSession,
+  findRefreshSession,
+  findRefreshReuseTombstone,
+  destroyRefreshSession,
+  revokeFamily,
+  denyAccessJti,
+  revokeAllUserSessions,
+} = require('../../services/session.service');
 const { logger } = require('../../utils/logger');
 const { config } = require('../../config');
 
@@ -133,14 +144,10 @@ async function resendVerification({ email }) {
 
 /**
  * Login with email + password.
- * Returns access JWT (+ refresh stub for cookie; Redis rotation in Issue #09).
- *
- * Security:
- * - Always same 401 message (don't leak whether email exists)
- * - Unverified email is ALLOWED for now (see docs/AUTH.md)
+ * Issues short-lived access JWT + Redis-backed refresh session (Issue #09).
  *
  * @param {{ email: string, password: string }} input
- * @param {{ ip?: string, userAgent?: string }} [meta] optional audit fields
+ * @param {{ ip?: string, userAgent?: string }} [meta]
  */
 async function login({ email, password }, meta = {}) {
   const user = await findUserWithRolesByEmail(email);
@@ -157,22 +164,22 @@ async function login({ email, password }, meta = {}) {
     throw invalid();
   }
 
-  // Optional later: block unverified users with 403
-  // if (!user.is_email_verified) {
-  //   throw new AppError('Please verify your email before logging in', 403, 'FORBIDDEN');
-  // }
-
   const { token, jti, expiresIn } = signAccessToken({
     userId: user.id,
     roles: user.roles,
   });
 
-  // Issue #09 will store this in Redis and rotate it.
-  // Stub so we can set the httpOnly refresh cookie now.
-  const refreshStub = generateOpaqueToken();
+  // One familyId per login — all rotated refresh tokens share it for reuse detection
+  const familyId = crypto.randomUUID();
+  const session = await createRefreshSession({
+    userId: user.id,
+    familyId,
+    ip: meta.ip,
+    userAgent: meta.userAgent,
+  });
 
   logger.info(
-    { userId: user.id, jti, ip: meta.ip, userAgent: meta.userAgent },
+    { userId: user.id, jti, familyId, ip: meta.ip, userAgent: meta.userAgent },
     'user logged in',
   );
 
@@ -180,7 +187,8 @@ async function login({ email, password }, meta = {}) {
     accessToken: token,
     tokenType: 'Bearer',
     expiresIn,
-    refreshStub,
+    // Controller sets httpOnly cookie; not returned in JSON body
+    refreshToken: session.rawRefresh,
     user: {
       id: user.id,
       email: user.email,
@@ -190,4 +198,118 @@ async function login({ email, password }, meta = {}) {
   };
 }
 
-module.exports = { register, verifyEmail, resendVerification, login };
+/**
+ * Rotate refresh token and issue a new access JWT.
+ *
+ * Flow:
+ * 1) Lookup session by hashed cookie value
+ * 2) If missing but tombstone exists → reuse/theft → revoke family → 401
+ * 3) Destroy old session (write tombstone)
+ * 4) Issue new access + new refresh (same familyId)
+ *
+ * @param {string} rawRefresh
+ * @param {{ ip?: string, userAgent?: string }} [meta]
+ */
+async function refresh(rawRefresh, meta = {}) {
+  if (!rawRefresh) {
+    throw new AppError('Refresh token required', 401, 'UNAUTHORIZED');
+  }
+
+  const session = await findRefreshSession(rawRefresh);
+
+  if (!session) {
+    // Old cookie presented after rotation → likely theft
+    const tombstone = await findRefreshReuseTombstone(rawRefresh);
+    if (tombstone) {
+      await revokeFamily(tombstone.userId, tombstone.familyId);
+      logger.warn(
+        { userId: tombstone.userId, familyId: tombstone.familyId },
+        'refresh token reuse detected — family revoked',
+      );
+      throw new AppError('Refresh token reuse detected', 401, 'UNAUTHORIZED');
+    }
+    throw new AppError('Invalid or expired refresh token', 401, 'UNAUTHORIZED');
+  }
+
+  // Rotate: kill old session BEFORE issuing the new one
+  await destroyRefreshSession({
+    userId: session.userId,
+    tokenId: session.tokenId,
+    tokenHash: session.tokenHash,
+    familyId: session.familyId,
+    writeTombstone: true,
+  });
+
+  const profile = await findUserProfileById(session.userId);
+  if (!profile || profile.status !== 'active') {
+    throw new AppError('Invalid or expired refresh token', 401, 'UNAUTHORIZED');
+  }
+
+  const { token, expiresIn } = signAccessToken({
+    userId: profile.id,
+    roles: profile.roles,
+  });
+
+  // Same familyId so a later reuse of ANY old token in this lineage can wipe all
+  const next = await createRefreshSession({
+    userId: profile.id,
+    familyId: session.familyId,
+    ip: meta.ip,
+    userAgent: meta.userAgent,
+  });
+
+  logger.info({ userId: profile.id, familyId: session.familyId }, 'refresh rotated');
+
+  return {
+    accessToken: token,
+    tokenType: 'Bearer',
+    expiresIn,
+    refreshToken: next.rawRefresh,
+  };
+}
+
+/**
+ * Logout current session: delete refresh + denylist access jti until exp.
+ * @param {{ rawRefresh?: string, accessJti?: string, accessExp?: number }} input
+ */
+async function logout({ rawRefresh, accessJti, accessExp }) {
+  if (rawRefresh) {
+    const session = await findRefreshSession(rawRefresh);
+    if (session) {
+      await destroyRefreshSession({
+        userId: session.userId,
+        tokenId: session.tokenId,
+        tokenHash: session.tokenHash,
+        familyId: session.familyId,
+        writeTombstone: false,
+      });
+    }
+  }
+
+  // Block the current access JWT until it would have expired naturally
+  if (accessJti && accessExp) {
+    const ttl = accessExp - Math.floor(Date.now() / 1000);
+    await denyAccessJti(accessJti, ttl);
+  }
+
+  return { message: 'Logged out successfully.' };
+}
+
+/**
+ * Wipe all Redis refresh sessions for this user (remote logout everywhere).
+ * @param {string} userId
+ */
+async function logoutAll(userId) {
+  await revokeAllUserSessions(userId);
+  return { message: 'Logged out from all sessions.' };
+}
+
+module.exports = {
+  register,
+  verifyEmail,
+  resendVerification,
+  login,
+  refresh,
+  logout,
+  logoutAll,
+};

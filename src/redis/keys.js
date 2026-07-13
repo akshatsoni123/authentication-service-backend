@@ -6,8 +6,14 @@ const keys = {
   /** Active refresh session metadata */
   refresh: (userId, tokenId) => `auth:refresh:${userId}:${tokenId}`,
 
-  /** Optional: map token hash → session pointer for lookup by cookie value hash */
+  /** Lookup session from cookie hash */
   refreshByHash: (tokenHash) => `auth:refresh-hash:${tokenHash}`,
+
+  /**
+   * Short-lived tombstone after rotation.
+   * If this key exists and primary session is gone → refresh reuse (theft) → revoke family.
+   */
+  refreshUsed: (tokenHash) => `auth:refresh-used:${tokenHash}`,
 
   /** Access JWT denylist after logout (jti) */
   denyJti: (jti) => `auth:deny:${jti}`,

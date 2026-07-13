@@ -1,5 +1,6 @@
 const express = require('express');
 const { validate } = require('../../middleware/validate');
+const { authenticate } = require('../../middleware/authenticate');
 const {
   registerBodySchema,
   verifyEmailBodySchema,
@@ -24,5 +25,12 @@ router.post(
   authController.resendVerification,
 );
 router.post('/login', validate({ body: loginBodySchema }), authController.login);
+
+// Refresh uses cookie only — no body schema required
+router.post('/refresh', authController.refresh);
+
+// Logout needs access token so we can denylist its jti
+router.post('/logout', authenticate, authController.logout);
+router.post('/logout-all', authenticate, authController.logoutAll);
 
 module.exports = { authRouter: router };

@@ -1,6 +1,7 @@
 const { AppError } = require('../utils/AppError');
 const { verifyAccessToken } = require('../utils/jwt');
 const { COOKIE } = require('../utils/cookies');
+const { isAccessJtiDenied } = require('../services/session.service');
 
 /**
  * Protect routes: require a valid access JWT.
@@ -9,9 +10,9 @@ const { COOKIE } = require('../utils/cookies');
  *  1) Authorization: Bearer <token>   ← best for Postman / mobile
  *  2) access_token httpOnly cookie    ← handy for browsers
  *
- * On success, sets req.user = { id, roles, jti }
+ * On success, sets req.user = { id, roles, jti, exp }
  */
-function authenticate(req, _res, next) {
+async function authenticate(req, _res, next) {
   try {
     let token;
 
@@ -29,11 +30,17 @@ function authenticate(req, _res, next) {
 
     const payload = verifyAccessToken(token);
 
+    // After logout, jti lives on a Redis denylist until natural exp
+    if (await isAccessJtiDenied(payload.jti)) {
+      throw new AppError('Invalid or expired access token', 401, 'UNAUTHORIZED');
+    }
+
     // Controllers should use req.user.id — never trust a userId from the body
     req.user = {
       id: payload.sub,
       roles: payload.roles || [],
       jti: payload.jti,
+      exp: payload.exp, // unix seconds — used to compute denylist TTL on logout
     };
 
     return next();

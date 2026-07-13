@@ -28,8 +28,46 @@ Login can later return `403` when `is_email_verified = false` if product require
 - Login response JSON includes `accessToken` for Bearer use.
 - Login also sets cookies:
   - `access_token` — httpOnly, `SameSite=Lax`, `Secure` in production, path `/`
-  - `refresh_token` — httpOnly, `SameSite=Lax`, `Secure` in production, path `/api/v1/auth` (stub until Issue #09 Redis rotation)
+  - `refresh_token` — httpOnly, `SameSite=Lax`, `Secure` in production, path `/api/v1/auth`
 
 `GET /api/v1/users/me` accepts Bearer **or** the access cookie via `authenticate` middleware.
 
 JWT access claims: `sub` (user id), `roles`, `jti`, plus `iat`/`exp` (lifetime from `JWT_ACCESS_EXPIRES_IN`, default 15m).
+
+## Refresh rotation & reuse detection (Issue #09)
+
+### Roles
+| Token | Lifetime | Storage |
+|-------|----------|---------|
+| Access JWT | ~15m | Stateless (+ Redis `auth:deny:{jti}` on logout) |
+| Refresh (opaque) | ~7d | Cookie (raw) + Redis (hash + metadata) |
+
+### Redis keys
+| Key | Purpose |
+|-----|---------|
+| `auth:refresh:{userId}:{tokenId}` | Active session metadata (familyId, hash, ip, …) |
+| `auth:refresh-hash:{tokenHash}` | Lookup session from cookie |
+| `auth:refresh-used:{tokenHash}` | Tombstone after rotation (reuse → theft) |
+| `auth:deny:{jti}` | Access denylist until JWT `exp` |
+
+TTL on refresh keys = `JWT_REFRESH_EXPIRES_IN` (must match cookie maxAge).
+
+### Rotation flow (`POST /api/v1/auth/refresh`)
+1. Read `refresh_token` cookie → hash → lookup Redis.
+2. If not found but tombstone exists → **reuse detected** → revoke entire **family** → `401`.
+3. Delete old session keys + write tombstone.
+4. Issue new access JWT + new refresh (same `familyId`).
+5. Set new cookies; old refresh cannot be reused.
+
+### Logout
+- `POST /api/v1/auth/logout` — delete this refresh session + denylist current access `jti`.
+- `POST /api/v1/auth/logout-all` — wipe all `auth:refresh:{userId}:*` for the user.
+
+### Threat model (token theft)
+| Stolen | Impact | Mitigation |
+|--------|--------|------------|
+| Access JWT | API access until `exp` (~15m) | Short TTL; logout denylist by `jti` |
+| Refresh cookie | Attacker can mint new access tokens | Rotation: one-time use; reuse of old refresh revokes the whole family |
+| Both | Full session takeover until logout-all / expiry | httpOnly + Secure cookies; HTTPS in prod |
+
+**Mental model:** refresh = long-lived *capability* stored in Redis. Each use burns the old capability and issues a new one. If an attacker and the victim both try to use the same refresh, the second use fails and the family is burned.
