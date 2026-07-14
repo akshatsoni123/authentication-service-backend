@@ -229,7 +229,7 @@ sequenceDiagram
 3. Example: `GET /api/v1/users/me` — any authenticated user.  
 4. Example: `GET /api/v1/admin/users` — `admin` role only.
 
-Roles are seeded (`user`, `admin`). JWT may embed `roles` for speed; critical admin actions can re-check DB if role revocation must be immediate (document trade-off in implementation).
+Roles are seeded (`user`, `moderator`, `admin`). JWT may embed `roles` for speed; critical admin actions can re-check DB via `requirePermission` if role revocation must be immediate. Full model and trade-offs: [RBAC.md](./RBAC.md).
 
 ---
 

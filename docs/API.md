@@ -347,6 +347,41 @@ Related design: [HLD.md](./HLD.md)
 
 ---
 
+### 3.10 Admin — assign roles
+
+`PATCH /api/v1/admin/users/:id/roles`
+
+**Auth:** Bearer access JWT + role `admin`
+
+**Body:**
+
+```json
+{
+  "roles": ["user", "admin"]
+}
+```
+
+Allowed role names: `user`, `moderator`, `admin`. At least one required. Replaces the user's existing roles.
+
+**Success:** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "userId": "uuid",
+    "roles": ["admin", "user"],
+    "note": "Role changes take effect on next login/refresh (new access token)."
+  }
+}
+```
+
+**Errors:** `401` unauthenticated · `403` not admin · `404` user not found · `400` validation
+
+See [RBAC.md](./RBAC.md) for JWT vs DB trade-offs and 401 vs 403.
+
+---
+
 ## 4. Health endpoints (non-versioned)
 
 | Method | Path | Purpose |

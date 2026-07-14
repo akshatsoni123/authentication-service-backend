@@ -89,6 +89,7 @@ docs/
 | [docs/DATABASE.md](./docs/DATABASE.md) | Schema, ER diagram, pooling, ACID, migrations |
 | [docs/REDIS.md](./docs/REDIS.md) | Redis keys, TTL, sessions decision, helpers |
 | [docs/AUTH.md](./docs/AUTH.md) | Email verify decisions, SMTP / Ethereal |
+| [docs/RBAC.md](./docs/RBAC.md) | Roles, permissions, authorize middleware, JWT vs DB |
 
 ## Environment
 

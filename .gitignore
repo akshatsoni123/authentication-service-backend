@@ -1,15 +1,63 @@
 # Dependencies
 node_modules/
 
-# Environment (never commit secrets)
+# Environment & secrets (never commit real credentials)
 .env
+.env.*
+!.env.example
 .env.local
 .env.*.local
+.env.development
+.env.production
+.env.test
+.env.staging
 
-# Logs
+# Cloud / API credential files
+credentials.json
+**/credentials.json
+*-credentials.json
+service-account*.json
+**/service-account*.json
+.aws/
+.gcloud/
+secrets/
+*.secret
+*.secrets
+
+# TLS / crypto key material
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+*.pub
+
+# NPM auth tokens (often in user npmrc; local project copies are risky)
+.npmrc
+
+# Database / Redis dumps that may contain PII or password hashes
+*.sql.bak
+*.dump
+*.rdb
+dump.rdb
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs (may contain request metadata / accidental token echoes)
 logs/
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # OS / IDE
 .DS_Store
@@ -19,12 +67,17 @@ Thumbs.db
 *.swp
 *.swo
 
-# Coverage / build
+# Coverage / build / scratch
 coverage/
+.nyc_output/
 dist/
 build/
 tmp/
 temp/
+*.tmp
 
 # Test artifacts
 *.lcov
+
+# Optional local overrides / editor keep files
+*.local

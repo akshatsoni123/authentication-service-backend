@@ -39,6 +39,10 @@ Modules under `src/modules/*` own their routes, controllers, and services. Share
 
 Use `validate({ body, query, params })` from `src/middleware/validate.js` on each route that accepts input. Invalid payloads become `400 VALIDATION_ERROR` with field-level `details`.
 
+### AuthN / AuthZ on routes
+
+Per-route (not global): `authenticate` then `authorize('admin')` or `requirePermission('users:list')`. Unauthenticated → `401`; authenticated but forbidden → `403`. Details: [RBAC.md](./RBAC.md).
+
 ## Config boot
 
 `src/server.js` loads `.env` via `dotenv`, then `src/config` validates with **Zod** and fails fast if required variables are missing. Application code should import `{ config }` from `src/config` — never read `process.env` ad hoc in modules.
