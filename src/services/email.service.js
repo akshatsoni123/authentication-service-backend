@@ -82,28 +82,70 @@ async function sendVerificationEmail({ to, rawToken }) {
     'This token expires in 24 hours. After a successful verify, repeating the same request stays successful (idempotent).',
   ].join('\n');
 
+  return sendMail({
+    to,
+    subject: 'Verify your email',
+    text,
+    successLog: 'verification email sent',
+    failLog: 'verification email FAILED — user may still use resend-verification',
+  });
+}
+
+/**
+ * Best-effort password-reset email. Failures are logged; forgot-password still returns 200.
+ * @param {{ to: string, rawToken: string }} input
+ */
+async function sendPasswordResetEmail({ to, rawToken }) {
+  const text = [
+    'Reset your Authentication Service password.',
+    '',
+    `Reset token: ${rawToken}`,
+    '',
+    `POST ${config.appUrl}/api/v1/auth/reset-password`,
+    'Body: { "token": "<token above>", "newPassword": "<new password>" }',
+    '',
+    'This token expires in 1 hour and can be used once.',
+  ].join('\n');
+
+  return sendMail({
+    to,
+    subject: 'Reset your password',
+    text,
+    successLog: 'password reset email sent',
+    failLog: 'password reset email FAILED',
+  });
+}
+
+/**
+ * Shared send helper — keeps transporter/error handling in one place.
+ */
+async function sendMail({ to, subject, text, successLog, failLog }) {
   try {
     const transport = await getTransporter();
     const info = await transport.sendMail({
       from: config.smtp.from,
       to,
-      subject: 'Verify your email',
+      subject,
       text,
     });
 
     const previewUrl = nodemailer.getTestMessageUrl(info);
     logger.info(
       { to, messageId: info.messageId, previewUrl: previewUrl || undefined },
-      'verification email sent',
+      successLog,
     );
     return { sent: true, messageId: info.messageId, previewUrl: previewUrl || null };
   } catch (err) {
     logger.error(
       { to, err: err instanceof Error ? err.message : err },
-      'verification email FAILED — user may still use resend-verification',
+      failLog,
     );
     return { sent: false, error: err instanceof Error ? err.message : 'send_failed' };
   }
 }
 
-module.exports = { sendVerificationEmail, getTransporter };
+module.exports = {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  getTransporter,
+};

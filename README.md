@@ -36,7 +36,14 @@ Refresh (cookie jar / `-c`/`-b` curl): `POST http://localhost:3000/api/v1/auth/r
 Logout: `POST http://localhost:3000/api/v1/auth/logout` (Bearer required)  
 Logout all: `POST http://localhost:3000/api/v1/auth/logout-all`
 
-See [docs/AUTH.md](./docs/AUTH.md) for verify, cookies, refresh rotation, and reuse detection.
+Forgot password: `POST http://localhost:3000/api/v1/auth/forgot-password` `{ "email": "you@example.com" }`  
+(In dev, copy `passwordResetToken` from server logs.)  
+Reset: `POST http://localhost:3000/api/v1/auth/reset-password`
+```json
+{ "token": "<token-from-email-or-dev-logs>", "newPassword": "N3wStr0ngPass" }
+```
+
+See [docs/AUTH.md](./docs/AUTH.md) for verify, cookies, refresh rotation, reuse detection, and password reset.
 
 | Script | Purpose |
 |--------|---------|

@@ -11,8 +11,15 @@ const {
   createVerificationToken,
   findUserWithRolesByEmail,
   findUserProfileById,
+  findActiveUserByEmail,
+  createPasswordResetToken,
+  findPasswordResetTokenByHash,
+  resetPasswordWithToken,
 } = require('./auth.repository');
-const { sendVerificationEmail } = require('../../services/email.service');
+const {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+} = require('../../services/email.service');
 const {
   createRefreshSession,
   findRefreshSession,
@@ -26,6 +33,11 @@ const { logger } = require('../../utils/logger');
 const { config } = require('../../config');
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+const GENERIC_FORGOT = {
+  message: 'If an account exists for that email, a reset link has been sent.',
+};
 
 /**
  * Register a new user. Never returns password_hash.
@@ -304,6 +316,84 @@ async function logoutAll(userId) {
   return { message: 'Logged out from all sessions.' };
 }
 
+/**
+ * Forgot password — anti-enumeration: always the same 200 message.
+ * @param {{ email: string }} input
+ */
+async function forgotPassword({ email }) {
+  const user = await findActiveUserByEmail(email);
+
+  if (user && user.status === 'active') {
+    const rawToken = generateOpaqueToken();
+    const tokenHash = hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + RESET_TTL_MS);
+
+    await createPasswordResetToken({
+      userId: user.id,
+      tokenHash,
+      expiresAt,
+    });
+
+    const mail = await sendPasswordResetEmail({ to: email, rawToken });
+    if (config.isDev) {
+      logger.debug(
+        {
+          email,
+          passwordResetToken: rawToken,
+          previewUrl: mail.previewUrl || undefined,
+          sent: mail.sent,
+        },
+        'dev-only password reset token',
+      );
+    }
+  }
+
+  return GENERIC_FORGOT;
+}
+
+/**
+ * Reset password with opaque token from email.
+ * Updates bcrypt hash, consumes token, revokes all Redis sessions.
+ * @param {{ token: string, newPassword: string }} input
+ */
+async function resetPassword({ token, newPassword }) {
+  const tokenHash = hashToken(token);
+  const row = await findPasswordResetTokenByHash(tokenHash);
+
+  // Same opaque error for missing / used / expired / inactive — less oracle for attackers
+  const invalid = () =>
+    new AppError('Invalid or expired reset token', 400, 'VALIDATION_ERROR');
+
+  if (!row || row.used_at || row.status !== 'active') {
+    throw invalid();
+  }
+  if (new Date(row.expires_at) < new Date()) {
+    throw invalid();
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+
+  await resetPasswordWithToken({
+    userId: row.user_id,
+    tokenId: row.id,
+    passwordHash,
+  });
+
+  // Password changed → every old refresh cookie must die
+  try {
+    await revokeAllUserSessions(row.user_id);
+  } catch (err) {
+    logger.error(
+      { userId: row.user_id, err: err.message },
+      'password reset OK but Redis session revoke failed — user should re-login anyway',
+    );
+  }
+
+  logger.info({ userId: row.user_id }, 'password reset completed; sessions revoked');
+
+  return { message: 'Password has been reset. Please log in.' };
+}
+
 module.exports = {
   register,
   verifyEmail,
@@ -312,4 +402,6 @@ module.exports = {
   refresh,
   logout,
   logoutAll,
+  forgotPassword,
+  resetPassword,
 };

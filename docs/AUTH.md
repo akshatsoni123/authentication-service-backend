@@ -71,3 +71,24 @@ TTL on refresh keys = `JWT_REFRESH_EXPIRES_IN` (must match cookie maxAge).
 | Both | Full session takeover until logout-all / expiry | httpOnly + Secure cookies; HTTPS in prod |
 
 **Mental model:** refresh = long-lived *capability* stored in Redis. Each use burns the old capability and issues a new one. If an attacker and the victim both try to use the same refresh, the second use fails and the family is burned.
+
+## Password reset (Issue #10)
+
+### Endpoints
+| Method | Path | Notes |
+|--------|------|--------|
+| `POST` | `/api/v1/auth/forgot-password` | Body: `{ "email" }` — **always** `200` with the same message (anti-enumeration). Rate-limited: 5 / 15m per IP (`rl:forgot:{ip}`). |
+| `POST` | `/api/v1/auth/reset-password` | Body: `{ "token", "newPassword" }` — same password policy as register. |
+
+### Flow
+1. **Forgot:** if an **active** user exists for that email, invalidate unused prior reset tokens, insert a new hashed token (1h TTL), email the raw token.
+2. Unknown / inactive emails still return the same generic success message (no account oracle).
+3. **Reset:** hash incoming token → lookup; reject if missing / used / expired / user not `active` with one opaque `400`.
+4. In a DB transaction: update `users.password_hash` (bcrypt), set `used_at` on the token (and siblings).
+5. **Revoke all Redis refresh sessions** for that user; clear access/refresh cookies on the response.
+
+### Security notes
+- Only **SHA-256 hashes** of reset tokens are stored (same pattern as email verify).
+- Shared `passwordSchema` for register and reset.
+- After reset, old password and old refresh cookies no longer work — user must log in again.
+- Broader rate limits (login, resend) land in Issue #12; forgot already uses Redis `INCR`.

@@ -163,6 +163,80 @@ async function findUserProfileById(userId) {
   };
 }
 
+/**
+ * Lightweight lookup for forgot-password (needs status for active check).
+ * @param {string} email
+ */
+async function findActiveUserByEmail(email) {
+  const result = await query(
+    `SELECT id, email, status FROM users WHERE email = $1 LIMIT 1`,
+    [email],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Invalidate unused reset tokens, then insert a new hashed one (1h TTL from caller).
+ * @param {{ userId: string, tokenHash: string, expiresAt: Date }} input
+ */
+async function createPasswordResetToken({ userId, tokenHash, expiresAt }) {
+  return withTransaction(async (client) => {
+    await client.query(
+      `UPDATE password_reset_tokens
+       SET used_at = NOW()
+       WHERE user_id = $1 AND used_at IS NULL`,
+      [userId],
+    );
+    await client.query(
+      `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+       VALUES ($1, $2, $3)`,
+      [userId, tokenHash, expiresAt],
+    );
+  });
+}
+
+/**
+ * @param {string} tokenHash
+ */
+async function findPasswordResetTokenByHash(tokenHash) {
+  const result = await query(
+    `SELECT t.id, t.user_id, t.expires_at, t.used_at, u.status
+     FROM password_reset_tokens t
+     JOIN users u ON u.id = t.user_id
+     WHERE t.token_hash = $1
+     LIMIT 1`,
+    [tokenHash],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Update password + consume reset token (+ siblings) in one ACID transaction.
+ * @param {{ userId: string, tokenId: string, passwordHash: string }} input
+ */
+async function resetPasswordWithToken({ userId, tokenId, passwordHash }) {
+  return withTransaction(async (client) => {
+    await client.query(
+      `UPDATE users
+       SET password_hash = $1, updated_at = NOW()
+       WHERE id = $2`,
+      [passwordHash, userId],
+    );
+    await client.query(
+      `UPDATE password_reset_tokens
+       SET used_at = NOW()
+       WHERE id = $1 AND used_at IS NULL`,
+      [tokenId],
+    );
+    await client.query(
+      `UPDATE password_reset_tokens
+       SET used_at = NOW()
+       WHERE user_id = $1 AND used_at IS NULL AND id <> $2`,
+      [userId, tokenId],
+    );
+  });
+}
+
 module.exports = {
   createUserWithDefaults,
   findRoleIdByName,
@@ -172,4 +246,8 @@ module.exports = {
   createVerificationToken,
   findUserWithRolesByEmail,
   findUserProfileById,
+  findActiveUserByEmail,
+  createPasswordResetToken,
+  findPasswordResetTokenByHash,
+  resetPasswordWithToken,
 };

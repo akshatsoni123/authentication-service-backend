@@ -114,6 +114,35 @@ async function logoutAll(req, res, next) {
   }
 }
 
+/**
+ * POST /auth/forgot-password — always 200 with the same message.
+ */
+async function forgotPassword(req, res, next) {
+  try {
+    const data = await authService.forgotPassword(req.body);
+    res.status(200).json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /auth/reset-password — bcrypt new password + revoke Redis sessions.
+ */
+async function resetPassword(req, res, next) {
+  try {
+    const data = await authService.resetPassword(req.body);
+
+    // Clear any existing browser session cookies after password change
+    res.clearCookie(COOKIE.ACCESS, { path: '/' });
+    res.clearCookie(COOKIE.REFRESH, { path: '/api/v1/auth' });
+
+    res.status(200).json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   register,
   verifyEmail,
@@ -122,4 +151,6 @@ module.exports = {
   refresh,
   logout,
   logoutAll,
+  forgotPassword,
+  resetPassword,
 };
