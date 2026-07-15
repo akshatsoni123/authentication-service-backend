@@ -14,6 +14,31 @@ npm run dev
 
 Health check: [http://localhost:3000/health](http://localhost:3000/health)
 
+## Docker Compose (Issue #16)
+
+Runs **API + PostgreSQL + Redis + Mailpit** with one command (multi-stage Alpine image, non-root user, migrate/seed on boot).
+
+```bash
+cp .env.example .env
+# If you previously ran ad-hoc containers on 5432/6379:
+#   docker stop auth-pg auth-redis
+docker compose up --build
+```
+
+| URL | Purpose |
+|-----|---------|
+| http://localhost:3000/health/live | API liveness |
+| http://localhost:3000/health/ready | Postgres + Redis readiness |
+| http://localhost:8025 | Mailpit (catch verification / reset emails) |
+
+Compose overrides `DATABASE_URL` / `REDIS_URL` / `SMTP_*` to use service hostnames (`postgres`, `redis`, `mail`). JWT and other secrets still come from your `.env`.
+
+Hot reload (bind-mount `src` + nodemon):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
 Register (Issue #06): `POST http://localhost:3000/api/v1/auth/register`
 ```json
 { "email": "you@example.com", "password": "Str0ng1Pass" }
@@ -73,9 +98,16 @@ Coverage: `npm run test:coverage` (auth module + key middleware/utils).
 | `npm run test:watch` | Jest watch mode |
 | `npm run test:coverage` | Jest with coverage report |
 
+Docker: `docker compose up --build` (see section above). Dev overlay: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build`.
+
 ## Project structure
 
 ```text
+Dockerfile                 # multi-stage Node Alpine (Issue #16)
+docker-compose.yml         # api + postgres + redis + mailpit
+docker-compose.dev.yml     # optional nodemon bind-mount
+scripts/
+  docker-entrypoint.js     # wait for Postgres → migrate/seed → start
 src/
   config/          # Zod-validated env → frozen config
   db/

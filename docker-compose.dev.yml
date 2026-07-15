@@ -1,0 +1,16 @@
+# Optional hot-reload overlay (Issue #16):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Uses the Dockerfile "development" target (full deps + nodemon) and bind-mounts src.
+
+services:
+  api:
+    build:
+      context: .
+      target: development
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./src:/app/src
+      - ./knexfile.js:/app/knexfile.js
+    command: ["npx", "nodemon", "src/server.js"]
