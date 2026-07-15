@@ -96,4 +96,10 @@ docs/
 
 Copy `.env.example` → `.env`. Required variables are validated on boot (fail fast). Never commit `.env`.
 
+Security checklist and HTTPS cookie notes: [docs/SECURITY.md](./docs/SECURITY.md).
+
+```bash
+npm run audit   # production dependency scan (also planned for CI in Issue #16)
+```
+
 Repo: [akshatsoni123/authentication-service-backend](https://github.com/akshatsoni123/authentication-service-backend)

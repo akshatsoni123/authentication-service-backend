@@ -15,7 +15,9 @@
     "migrate:rollback": "knex migrate:rollback",
     "migrate:status": "knex migrate:status",
     "seed": "knex seed:run",
-    "db:setup": "npm run migrate && npm run seed"
+    "db:setup": "npm run migrate && npm run seed",
+    "audit": "npm audit --omit=dev",
+    "audit:all": "npm audit"
   },
   "engines": {
     "node": ">=18"

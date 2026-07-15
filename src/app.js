@@ -17,8 +17,16 @@ function createApp() {
 
   app.disable('x-powered-by');
 
+  // Behind Nginx / a load balancer in production, trust X-Forwarded-For so
+  // req.ip (and thus rate-limit keys) reflect the real client, not the proxy.
+  if (config.isProd) {
+    app.set('trust proxy', 1);
+  }
+
   // Order: requestId → helmet → cors → json → cookies → http logger → routes → 404 → errors
   app.use(requestId);
+  // Helmet sets secure defaults (X-Content-Type-Options, etc.). CSP is mostly
+  // relevant when serving HTML; this API returns JSON only, so defaults are enough.
   app.use(helmet());
   app.use(
     cors({

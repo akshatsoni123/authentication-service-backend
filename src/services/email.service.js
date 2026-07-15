@@ -68,6 +68,7 @@ async function getTransporter() {
 
 /**
  * Best-effort verification email. Failures are logged; caller should not fail registration.
+ * Plaintext only (no HTML) — avoids XSS/HTML-injection in mail clients.
  * @param {{ to: string, rawToken: string }} input
  */
 async function sendVerificationEmail({ to, rawToken }) {

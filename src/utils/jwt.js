@@ -5,11 +5,13 @@ const { config } = require('../config');
 /**
  * Create a short-lived access JWT.
  *
- * Claims (keep small):
+ * Least data in token (intentional):
  *  - sub   = user id
- *  - roles = string[] (e.g. ["user"])
- *  - jti   = unique token id (used later for logout denylist in Redis)
+ *  - roles = string[] (e.g. ["user"]) — enough for authorize(); not full permissions
+ *  - jti   = unique token id (logout denylist in Redis)
  *  - iat / exp = added by jsonwebtoken from expiresIn
+ *
+ * Do NOT put email, password hashes, or PII in the JWT.
  */
 function signAccessToken({ userId, roles }) {
   // Random id for this specific access token

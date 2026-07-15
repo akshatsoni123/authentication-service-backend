@@ -8,9 +8,16 @@ const COOKIE = {
 
 /**
  * Access cookie options.
- * - httpOnly: browser JS cannot read it (helps vs XSS stealing tokens)
- * - secure: HTTPS only in production (false on local HTTP)
- * - sameSite: 'lax' reduces CSRF risk for typical browser flows
+ *
+ * Production (HTTPS) checklist:
+ *  - httpOnly: true  → browser JS cannot read the cookie (mitigates XSS token theft)
+ *  - secure: true    → cookie only sent over HTTPS (set via config.isProd)
+ *  - sameSite: 'lax' → reduces CSRF on cross-site navigations; use 'strict' if
+ *                      the SPA is always same-site with the API
+ *  - path: '/'       → access token needed on all API routes
+ *
+ * Local HTTP keeps secure: false so cookies work on http://localhost.
+ * Never set secure: false in production behind real users.
  */
 function accessCookieOptions() {
   return {
@@ -23,8 +30,9 @@ function accessCookieOptions() {
 }
 
 /**
- * Refresh cookie options (full Redis rotation comes in Issue #09).
- * Path limited to /api/v1/auth so it is only sent to auth endpoints.
+ * Refresh cookie options.
+ * Path limited to /api/v1/auth so the browser only sends it to auth endpoints
+ * (refresh / logout), shrinking CSRF/exposure surface.
  */
 function refreshCookieOptions() {
   return {
