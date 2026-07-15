@@ -21,10 +21,11 @@ const keys = {
   /** Generic session blob if needed beyond refresh */
   session: (sessionId) => `auth:session:${sessionId}`,
 
-  /** Rate limits */
+  /** Rate limits (fixed-window counters — see docs/SECURITY.md) */
   rateLimitLogin: (ip, email) => `rl:login:${ip}:${email}`,
   rateLimitForgot: (ip) => `rl:forgot:${ip}`,
   rateLimitRegister: (ip) => `rl:register:${ip}`,
+  rateLimitResend: (ip, email) => `rl:resend:${ip}:${email}`,
 };
 
 module.exports = { keys };

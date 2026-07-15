@@ -47,6 +47,16 @@ const config = Object.freeze({
   bcrypt: {
     saltRounds: env.BCRYPT_SALT_ROUNDS,
   },
+
+  rateLimit: {
+    login: { max: env.RL_LOGIN_MAX, windowSeconds: env.RL_LOGIN_WINDOW_SEC },
+    forgot: { max: env.RL_FORGOT_MAX, windowSeconds: env.RL_FORGOT_WINDOW_SEC },
+    register: {
+      max: env.RL_REGISTER_MAX,
+      windowSeconds: env.RL_REGISTER_WINDOW_SEC,
+    },
+    resend: { max: env.RL_RESEND_MAX, windowSeconds: env.RL_RESEND_WINDOW_SEC },
+  },
 });
 
 module.exports = { config };

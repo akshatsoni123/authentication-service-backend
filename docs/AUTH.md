@@ -77,7 +77,7 @@ TTL on refresh keys = `JWT_REFRESH_EXPIRES_IN` (must match cookie maxAge).
 ### Endpoints
 | Method | Path | Notes |
 |--------|------|--------|
-| `POST` | `/api/v1/auth/forgot-password` | Body: `{ "email" }` — **always** `200` with the same message (anti-enumeration). Rate-limited: 5 / 15m per IP (`rl:forgot:{ip}`). |
+| `POST` | `/api/v1/auth/forgot-password` | Body: `{ "email" }` — **always** `200` with the same message (anti-enumeration). Rate-limited per IP (see [SECURITY.md](./SECURITY.md); defaults 5 / 15m, `rl:forgot:{ip}`). |
 | `POST` | `/api/v1/auth/reset-password` | Body: `{ "token", "newPassword" }` — same password policy as register. |
 
 ### Flow

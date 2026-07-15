@@ -90,6 +90,7 @@ docs/
 | [docs/REDIS.md](./docs/REDIS.md) | Redis keys, TTL, sessions decision, helpers |
 | [docs/AUTH.md](./docs/AUTH.md) | Email verify decisions, SMTP / Ethereal |
 | [docs/RBAC.md](./docs/RBAC.md) | Roles, permissions, authorize middleware, JWT vs DB |
+| [docs/SECURITY.md](./docs/SECURITY.md) | Rate limits, Redis fixed window, 429 / Retry-After |
 
 ## Environment
 

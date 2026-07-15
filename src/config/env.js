@@ -31,6 +31,16 @@ const envSchema = z.object({
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
   DB_POOL_IDLE_MS: z.coerce.number().int().positive().default(30000),
   DB_POOL_CONN_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+
+  // Rate limits — fixed window (Redis INCR + EXPIRE)
+  RL_LOGIN_MAX: z.coerce.number().int().positive().default(5),
+  RL_LOGIN_WINDOW_SEC: z.coerce.number().int().positive().default(900),
+  RL_FORGOT_MAX: z.coerce.number().int().positive().default(5),
+  RL_FORGOT_WINDOW_SEC: z.coerce.number().int().positive().default(900),
+  RL_REGISTER_MAX: z.coerce.number().int().positive().default(10),
+  RL_REGISTER_WINDOW_SEC: z.coerce.number().int().positive().default(3600),
+  RL_RESEND_MAX: z.coerce.number().int().positive().default(5),
+  RL_RESEND_WINDOW_SEC: z.coerce.number().int().positive().default(900),
 });
 
 /**

@@ -43,9 +43,10 @@ Key builders: `src/redis/keys.js` → `keys.*`
 | `auth:refresh-used:{tokenHash}` | `keys.refreshUsed` | Tombstone after rotation (reuse detection) | ≤ refresh lifetime (7d) |
 | `auth:deny:{jti}` | `keys.denyJti` | Access token denylist after logout | remaining access life (~15m) |
 | `auth:session:{sessionId}` | `keys.session` | Optional generic session blob | as needed |
-| `rl:login:{ip}:{email}` | `keys.rateLimitLogin` | Login brute-force window | e.g. 15m |
-| `rl:forgot:{ip}` | `keys.rateLimitForgot` | Forgot-password throttle | e.g. 15m |
-| `rl:register:{ip}` | `keys.rateLimitRegister` | Register throttle | e.g. 1h |
+| `rl:login:{ip}:{email}` | `keys.rateLimitLogin` | Login brute-force window | env `RL_LOGIN_*` (default 15m) |
+| `rl:forgot:{ip}` | `keys.rateLimitForgot` | Forgot-password throttle | env `RL_FORGOT_*` (default 15m) |
+| `rl:register:{ip}` | `keys.rateLimitRegister` | Register throttle | env `RL_REGISTER_*` (default 1h) |
+| `rl:resend:{ip}:{email}` | `keys.rateLimitResend` | Resend-verification throttle | env `RL_RESEND_*` (default 15m) |
 
 Example set with TTL:
 
