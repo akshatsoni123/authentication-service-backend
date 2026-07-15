@@ -31,6 +31,7 @@ const {
 } = require('../../services/session.service');
 const { logger } = require('../../utils/logger');
 const { config } = require('../../config');
+const { observeLoginSuccess, observeLoginFailure } = require('../../metrics');
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -168,11 +169,27 @@ async function login({ email, password }, meta = {}) {
   const invalid = () => new AppError('Invalid email or password', 401, 'UNAUTHORIZED');
 
   if (!user || user.status !== 'active') {
+    // No email / password in logs — reason code only
+    logger.info(
+      { event: 'login_failed', reason: 'invalid_credentials', ip: meta.ip },
+      'login failed',
+    );
+    observeLoginFailure('invalid_credentials');
     throw invalid();
   }
 
   const passwordOk = await verifyPassword(password, user.password_hash);
   if (!passwordOk) {
+    logger.info(
+      {
+        event: 'login_failed',
+        reason: 'invalid_credentials',
+        userId: user.id,
+        ip: meta.ip,
+      },
+      'login failed',
+    );
+    observeLoginFailure('invalid_credentials');
     throw invalid();
   }
 
@@ -191,9 +208,17 @@ async function login({ email, password }, meta = {}) {
   });
 
   logger.info(
-    { userId: user.id, jti, familyId, ip: meta.ip, userAgent: meta.userAgent },
+    {
+      event: 'login_success',
+      userId: user.id,
+      jti,
+      familyId,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    },
     'user logged in',
   );
+  observeLoginSuccess();
 
   return {
     accessToken: token,

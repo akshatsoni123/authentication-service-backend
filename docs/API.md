@@ -382,14 +382,17 @@ See [RBAC.md](./RBAC.md) for JWT vs DB trade-offs and 401 vs 403.
 
 ---
 
-## 4. Health endpoints (non-versioned)
+## 4. Health & metrics (non-versioned)
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/health/live` | Process up → `200` |
+| `GET` | `/health` | Alias of `/health/live` |
 | `GET` | `/health/ready` | Postgres + Redis reachable → `200`, else `503` |
+| `GET` | `/metrics` | Prometheus text metrics (`prom-client`) |
 
-These may return a simpler JSON body (not necessarily the v1 envelope), e.g. `{ "status": "ok" }`.
+JSON envelope for health, e.g. `{ "success": true, "data": { "status": "ok" } }`.  
+See [OBSERVABILITY.md](./OBSERVABILITY.md) for Docker/Nginx probe usage and metric names.
 
 ---
 

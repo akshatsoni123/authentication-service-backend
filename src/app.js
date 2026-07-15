@@ -11,6 +11,7 @@ const { errorHandler } = require('./middleware/errorHandler');
 const { pingDatabase } = require('./db');
 const { pingRedis } = require('./redis');
 const { logger } = require('./utils/logger');
+const { metricsMiddleware, metricsHandler } = require('./metrics');
 
 function createApp() {
   const app = express();
@@ -23,7 +24,7 @@ function createApp() {
     app.set('trust proxy', 1);
   }
 
-  // Order: requestId → helmet → cors → json → cookies → http logger → routes → 404 → errors
+  // Order: requestId → helmet → cors → json → cookies → http logger → metrics → routes
   app.use(requestId);
   // Helmet sets secure defaults (X-Content-Type-Options, etc.). CSP is mostly
   // relevant when serving HTML; this API returns JSON only, so defaults are enough.
@@ -41,7 +42,21 @@ function createApp() {
     pinoHttp({
       logger,
       genReqId: (req) => req.id,
-      customProps: (req) => ({ requestId: req.id }),
+      customProps: (req) => ({
+        requestId: req.id,
+        route: req.route?.path,
+      }),
+      autoLogging: {
+        ignore: (req) => {
+          const p = req.url?.split('?')[0] || '';
+          return (
+            p === '/health/live' ||
+            p === '/health/ready' ||
+            p === '/health' ||
+            p === '/metrics'
+          );
+        },
+      },
       serializers: {
         req(req) {
           return {
@@ -53,21 +68,33 @@ function createApp() {
       },
     }),
   );
+  app.use(metricsMiddleware);
 
-  app.get('/health', async (_req, res) => {
-    const redis = await pingRedis();
+  // Liveness — process up only (orchestrators restart on failure)
+  app.get('/health/live', (_req, res) => {
     res.status(200).json({
       success: true,
       data: {
         status: 'ok',
         service: 'authentication-service',
-        env: config.env,
-        redis: { ok: redis.ok, status: redis.status, reason: redis.reason },
         timestamp: new Date().toISOString(),
       },
     });
   });
 
+  // Alias for older docs / clients
+  app.get('/health', (_req, res) => {
+    res.status(200).json({
+      success: true,
+      data: {
+        status: 'ok',
+        service: 'authentication-service',
+        timestamp: new Date().toISOString(),
+      },
+    });
+  });
+
+  // Readiness — safe to receive traffic only when deps are up
   app.get('/health/ready', async (_req, res) => {
     const [database, redis] = await Promise.all([pingDatabase(), pingRedis()]);
     const ready = database.ok && redis.ok;
@@ -82,6 +109,9 @@ function createApp() {
       },
     });
   });
+
+  // Prometheus scrape target (restrict at network / Nginx in production)
+  app.get('/metrics', metricsHandler);
 
   app.use('/api/v1', apiRouter);
 

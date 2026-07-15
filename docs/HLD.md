@@ -243,7 +243,8 @@ Roles are seeded (`user`, `moderator`, `admin`). JWT may embed `roles` for speed
 | **Partial Redis loss** | Key eviction | Users re-authenticate; access JWTs still valid until expiry unless denylist was required. |
 
 **Readiness:** `GET /health/ready` fails if Postgres **or** Redis is unreachable.  
-**Liveness:** `GET /health/live` only checks process up.
+**Liveness:** `GET /health/live` only checks process up.  
+**Metrics:** `GET /metrics` (Prometheus). Details: [OBSERVABILITY.md](./OBSERVABILITY.md).
 
 ---
 

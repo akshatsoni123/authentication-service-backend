@@ -81,7 +81,7 @@ await set(
 | Situation | Behavior |
 |-----------|----------|
 | Redis down on boot | Log clear error; API still starts |
-| `/health` | Reports `redis.ok` |
+| `/health/live` | Process up (alias: `/health`) |
 | `/health/ready` | Returns **503** if Redis (or Postgres) is down |
 | Login/refresh later | Should **fail closed** when Redis is required (Issue #08/#09) |
 
@@ -96,6 +96,7 @@ docker run --name auth-redis -p 6379:6379 -d redis:7-alpine
 Health:
 
 ```bash
-curl http://localhost:3000/health
+curl http://localhost:3000/health/live
 curl http://localhost:3000/health/ready
+curl http://localhost:3000/metrics
 ```
