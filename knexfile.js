@@ -1,7 +1,12 @@
 const path = require('path');
 const dotenv = require('dotenv');
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+// Prefer .env.test when running migrations for the test suite
+const envFile =
+  process.env.NODE_ENV === 'test'
+    ? path.resolve(process.cwd(), '.env.test')
+    : path.resolve(process.cwd(), '.env');
+dotenv.config({ path: envFile });
 
 /**
  * Knex CLI config.

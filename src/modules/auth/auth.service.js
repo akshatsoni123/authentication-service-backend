@@ -16,10 +16,7 @@ const {
   findPasswordResetTokenByHash,
   resetPasswordWithToken,
 } = require('./auth.repository');
-const {
-  sendVerificationEmail,
-  sendPasswordResetEmail,
-} = require('../../services/email.service');
+const emailService = require('../../services/email.service');
 const {
   createRefreshSession,
   findRefreshSession,
@@ -65,15 +62,15 @@ async function register({ email, password }) {
     throw err;
   }
 
-  const mail = await sendVerificationEmail({ to: email, rawToken });
-  if (config.isDev) {
+  const mail = await emailService.sendVerificationEmail({ to: email, rawToken });
+  if (config.isDev || config.isTest) {
     logger.debug(
       {
         emailVerificationToken: rawToken,
         previewUrl: mail.previewUrl || undefined,
         sent: mail.sent,
       },
-      'dev-only verification token (also in email if SMTP/Ethereal worked)',
+      'dev/test verification token (also in email if SMTP/Ethereal worked)',
     );
   }
 
@@ -140,15 +137,15 @@ async function resendVerification({ email }) {
     expiresAt,
   });
 
-  const mail = await sendVerificationEmail({ to: email, rawToken });
-  if (config.isDev) {
+  const mail = await emailService.sendVerificationEmail({ to: email, rawToken });
+  if (config.isDev || config.isTest) {
     logger.debug(
       {
         email,
         emailVerificationToken: rawToken,
         previewUrl: mail.previewUrl || undefined,
       },
-      'dev-only resend verification token',
+      'dev/test resend verification token',
     );
   }
 
@@ -359,8 +356,8 @@ async function forgotPassword({ email }) {
       expiresAt,
     });
 
-    const mail = await sendPasswordResetEmail({ to: email, rawToken });
-    if (config.isDev) {
+    const mail = await emailService.sendPasswordResetEmail({ to: email, rawToken });
+    if (config.isDev || config.isTest) {
       logger.debug(
         {
           email,
@@ -368,7 +365,7 @@ async function forgotPassword({ email }) {
           previewUrl: mail.previewUrl || undefined,
           sent: mail.sent,
         },
-        'dev-only password reset token',
+        'dev/test password reset token',
       );
     }
   }

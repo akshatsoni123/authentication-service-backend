@@ -45,6 +45,21 @@ Reset: `POST http://localhost:3000/api/v1/auth/reset-password`
 
 See [docs/AUTH.md](./docs/AUTH.md) for verify, cookies, refresh rotation, reuse detection, and password reset.
 
+## Running tests (Issue #15)
+
+Tests use **Jest** + **Supertest** against a dedicated Postgres DB and Redis DB index (not your Postman data).
+
+1. Ensure Postgres + Redis are running (same Docker containers as local dev are fine).
+2. Copy env: `cp .env.test.example .env.test` (already points at `auth_service_test` + Redis `/1`).
+3. Run: `npm test`
+
+`jest` **globalSetup** creates `auth_service_test` if missing, then runs migrations + role seeds. Each API test truncates user tables and flushes Redis DB 1.
+
+- Unit: password, JWT, opaque tokens, `authorize`, rate-limit middleware, health/metrics  
+- API: register→verify→login→me, bad password, refresh reuse, logout, forgot/reset, RBAC, validation 400, login 429  
+
+Coverage: `npm run test:coverage` (auth module + key middleware/utils).
+
 | Script | Purpose |
 |--------|---------|
 | `npm run dev` | Start with nodemon (reload on change) |
@@ -54,7 +69,9 @@ See [docs/AUTH.md](./docs/AUTH.md) for verify, cookies, refresh rotation, reuse 
 | `npm run db:setup` | migrate + seed |
 | `npm run lint` | ESLint |
 | `npm run format` | Prettier |
-| `npm test` | Tests (placeholder until Issue #15) |
+| `npm test` | Jest unit + Supertest API tests (Issue #15) |
+| `npm run test:watch` | Jest watch mode |
+| `npm run test:coverage` | Jest with coverage report |
 
 ## Project structure
 

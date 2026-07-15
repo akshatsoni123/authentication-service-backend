@@ -1,9 +1,3 @@
-const { describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('path');
-
-require('dotenv').config({ path: path.resolve(process.cwd(), '.env') });
-
 const { rateLimit } = require('../src/middleware/rateLimit');
 const { AppError } = require('../src/utils/AppError');
 
@@ -48,14 +42,14 @@ describe('rateLimit middleware (fixed window)', () => {
 
     for (let i = 0; i < max; i += 1) {
       const { err } = await run(mw);
-      assert.equal(err, null, `request ${i + 1} should be allowed`);
+      expect(err).toBeNull();
     }
 
     const { err, retryAfter } = await run(mw);
-    assert.ok(err instanceof AppError);
-    assert.equal(err.statusCode, 429);
-    assert.equal(err.code, 'RATE_LIMITED');
-    assert.equal(retryAfter, '600');
+    expect(err).toBeInstanceOf(AppError);
+    expect(err.statusCode).toBe(429);
+    expect(err.code).toBe('RATE_LIMITED');
+    expect(retryAfter).toBe('600');
   });
 
   it('returns 503 when Redis incr fails (fail-closed)', async () => {
@@ -75,9 +69,9 @@ describe('rateLimit middleware (fixed window)', () => {
     });
 
     const { err } = await run(mw);
-    assert.ok(err instanceof AppError);
-    assert.equal(err.statusCode, 503);
-    assert.equal(err.code, 'SERVICE_UNAVAILABLE');
+    expect(err).toBeInstanceOf(AppError);
+    expect(err.statusCode).toBe(503);
+    expect(err.code).toBe('SERVICE_UNAVAILABLE');
   });
 
   it('uses windowSeconds for Retry-After when TTL is missing', async () => {
@@ -97,7 +91,7 @@ describe('rateLimit middleware (fixed window)', () => {
     });
 
     const { err, retryAfter } = await run(mw);
-    assert.equal(err.statusCode, 429);
-    assert.equal(retryAfter, '120');
+    expect(err.statusCode).toBe(429);
+    expect(retryAfter).toBe('120');
   });
 });
