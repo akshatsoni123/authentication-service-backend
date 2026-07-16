@@ -85,6 +85,19 @@ Tests use **Jest** + **Supertest** against a dedicated Postgres DB and Redis DB 
 2. Copy env: `cp .env.test.example .env.test` (already points at `auth_service_test` + Redis `/1`).
 3. Run: `npm test`
 
+In GitHub Actions (Issue #18), the workflow sets equivalent env vars (no `.env.test` file needed in CI).
+Required CI env vars:
+```text
+NODE_ENV=test
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/auth_service_test
+REDIS_URL=redis://localhost:6379/1
+JWT_ACCESS_SECRET=...
+JWT_REFRESH_SECRET=...
+CORS_ORIGIN=http://localhost:3000
+SMTP_HOST=localhost
+SMTP_FROM=...
+```
+
 `jest` **globalSetup** creates `auth_service_test` if missing, then runs migrations + role seeds. Each API test truncates user tables and flushes Redis DB 1.
 
 - Unit: password, JWT, opaque tokens, `authorize`, rate-limit middleware, health/metrics  
