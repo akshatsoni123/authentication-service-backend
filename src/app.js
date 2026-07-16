@@ -18,9 +18,9 @@ function createApp() {
 
   app.disable('x-powered-by');
 
-  // Behind Nginx / a load balancer in production, trust X-Forwarded-For so
-  // req.ip (and thus rate-limit keys) reflect the real client, not the proxy.
-  if (config.isProd) {
+  // Behind Nginx: trust one proxy hop so req.ip / Secure cookies use X-Forwarded-*.
+  // TRUST_PROXY=1 in Docker Compose; production also enables this when NODE_ENV=production.
+  if (config.isProd || config.trustProxy) {
     app.set('trust proxy', 1);
   }
 

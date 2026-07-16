@@ -4,6 +4,10 @@ Production-minded authentication API (Backend Roadmap **Project #3**): JWT + ref
 
 ## Quick start
 
+**Option A — Docker (Nginx + full stack):** see [Docker Compose](#docker-compose-issue-16--17) below.
+
+**Option B — Local Node:**
+
 ```bash
 cp .env.example .env
 npm install
@@ -12,34 +16,37 @@ npm run db:setup
 npm run dev
 ```
 
-Health check: [http://localhost:3000/health](http://localhost:3000/health)
+Health: http://localhost:3000/health/live
 
-## Docker Compose (Issue #16)
+## Docker Compose (Issue #16 + #17)
 
-Runs **API + PostgreSQL + Redis + Mailpit** with one command (multi-stage Alpine image, non-root user, migrate/seed on boot).
+Runs **Nginx → API + PostgreSQL + Redis + Mailpit** with one command (multi-stage Alpine image, non-root user, migrate/seed on boot).
 
 ```bash
 cp .env.example .env
-# If you previously ran ad-hoc containers on 5432/6379:
-#   docker stop auth-pg auth-redis
 docker compose up --build
 ```
 
 | URL | Purpose |
 |-----|---------|
-| http://localhost:3000/health/live | API liveness |
-| http://localhost:3000/health/ready | Postgres + Redis readiness |
+| http://localhost/api/v1/... | **Public API via Nginx** (port 80) |
+| http://localhost/health/live | Liveness through proxy |
+| http://localhost/health/ready | Readiness (Postgres + Redis) |
 | http://localhost:8025 | Mailpit (catch verification / reset emails) |
 
-Compose overrides `DATABASE_URL` / `REDIS_URL` / `SMTP_*` to use service hostnames (`postgres`, `redis`, `mail`). JWT and other secrets still come from your `.env`.
+Compose sets `TRUST_PROXY=1`, `APP_URL=http://localhost`, and internal `DATABASE_URL` / `REDIS_URL` / `SMTP_*`. JWT secrets still come from `.env`.
 
-Hot reload (bind-mount `src` + nodemon):
+Hot reload (bind-mount `src` + nodemon; also exposes API :3000 for direct debug):
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-Register (Issue #06): `POST http://localhost:3000/api/v1/auth/register`
+Nginx + proxy details: [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md).
+
+Register via Nginx: `POST http://localhost/api/v1/auth/register`
+
+## API examples (local Node on :3000)
 ```json
 { "email": "you@example.com", "password": "Str0ng1Pass" }
 ```
@@ -103,9 +110,10 @@ Docker: `docker compose up --build` (see section above). Dev overlay: `docker co
 ## Project structure
 
 ```text
+nginx/nginx.conf           # reverse proxy (Issue #17)
 Dockerfile                 # multi-stage Node Alpine (Issue #16)
-docker-compose.yml         # api + postgres + redis + mailpit
-docker-compose.dev.yml     # optional nodemon bind-mount
+docker-compose.yml         # nginx + api + postgres + redis + mailpit
+docker-compose.dev.yml     # optional nodemon bind-mount + api :3000
 scripts/
   docker-entrypoint.js     # wait for Postgres → migrate/seed → start
 src/
@@ -141,6 +149,7 @@ docs/
 | [docs/RBAC.md](./docs/RBAC.md) | Roles, permissions, authorize middleware, JWT vs DB |
 | [docs/SECURITY.md](./docs/SECURITY.md) | Rate limits, Redis fixed window, 429 / Retry-After |
 | [docs/OBSERVABILITY.md](./docs/OBSERVABILITY.md) | Health probes, logging, Prometheus `/metrics` |
+| [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) | Nginx reverse proxy, `/api/v1` via port 80, HTTPS notes |
 
 ## Environment
 

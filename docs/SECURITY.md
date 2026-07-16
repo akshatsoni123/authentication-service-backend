@@ -25,7 +25,7 @@ Status legend: **Done** · **Partial** · **Planned** (later ticket)
 | Refresh rotation + reuse detection | **Done** | Redis sessions; stolen refresh → family revoke |
 | Logging redaction | **Done** | Pino redacts passwords, tokens, `Authorization`, cookies |
 | Error leakage control | **Done** | Prod hides 500 internals (`errorHandler`) |
-| Trust proxy (real client IP) | **Done** | `trust proxy` enabled when `NODE_ENV=production` |
+| Trust proxy (real client IP) | **Done** | `TRUST_PROXY=1` or `NODE_ENV=production` → `trust proxy` 1 hop |
 | Dependency audit script | **Done** | `npm run audit` (CI wire-up planned in Issue #16 Docker/CI) |
 | Temporary account lockout | **Partial** | Rate limits cover burst abuse; optional lockout not implemented |
 | npm audit clean (0 high) | **Partial** | See [Dependency audit](#dependency-audit); upgrade path documented |

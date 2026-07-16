@@ -26,6 +26,13 @@ const envSchema = z.object({
 
   APP_URL: z.string().url().default('http://localhost:3000'),
 
+  // Trust X-Forwarded-* from Nginx (1 hop). Set TRUST_PROXY=1 in Compose / behind reverse proxy.
+  TRUST_PROXY: z
+    .enum(['0', '1', 'true', 'false', ''])
+    .optional()
+    .default('0')
+    .transform((v) => v === '1' || v === 'true'),
+
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
 
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),

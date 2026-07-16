@@ -2,14 +2,18 @@
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 #
 # Uses the Dockerfile "development" target (full deps + nodemon) and bind-mounts src.
+# Also exposes API :3000 directly for debugging (Nginx remains on :80).
 
 services:
   api:
     build:
       context: .
       target: development
+    ports:
+      - "3000:3000"
     environment:
       NODE_ENV: development
+      TRUST_PROXY: "1"
     volumes:
       - ./src:/app/src
       - ./knexfile.js:/app/knexfile.js

@@ -44,6 +44,9 @@ const config = Object.freeze({
 
   appUrl: env.APP_URL,
 
+  /** When true, Express trusts one reverse-proxy hop (X-Forwarded-For / Proto). */
+  trustProxy: env.TRUST_PROXY,
+
   bcrypt: {
     saltRounds: env.BCRYPT_SALT_ROUNDS,
   },
